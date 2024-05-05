@@ -5,5 +5,6 @@ edition = "2021"
 
 [dependencies]
 eframe = "0.27.2"
+windows = { version = "0.56.0", features = ["Win32_UI_WindowsAndMessaging"] }
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

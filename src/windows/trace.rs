@@ -1,5 +1,5 @@
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicBool, AtomicUsize, Ordering},
     Mutex,
 };
 
@@ -20,9 +20,14 @@ use windows::Win32::{
 
 use crate::keyboard::KeyCode;
 
-pub type CallbackFunction = Box<dyn FnMut(KeyCode) -> () + Send>;
+type BoxedCallbackFunction = Box<dyn FnMut(KeyCode) -> () + Send>;
 
-static CALLBACK_HANDLERS: Mutex<Option<Vec<CallbackFunction>>> = Mutex::new(None);
+struct CallbackEntry {
+    callback: BoxedCallbackFunction,
+    id: usize,
+}
+
+static CALLBACK_HANDLERS: Mutex<Option<Vec<CallbackEntry>>> = Mutex::new(None);
 
 unsafe extern "system" fn keyboard_hook_callback(
     code: i32,
@@ -71,7 +76,7 @@ unsafe extern "system" fn keyboard_hook_callback(
                 let mut callbacks = CALLBACK_HANDLERS.lock().unwrap();
                 if let Some(callbacks) = &mut *callbacks {
                     for callback in callbacks {
-                        callback(key_code);
+                        (callback.callback)(key_code);
                     }
                 }
             }
@@ -80,10 +85,13 @@ unsafe extern "system" fn keyboard_hook_callback(
     CallNextHookEx(None, code, wparam, lparam)
 }
 
-pub struct Tracer();
+pub struct Tracer(usize);
 
 impl Tracer {
-    pub fn new(callback: CallbackFunction) -> Self {
+    pub fn new<CallbackFunction>(callback: CallbackFunction) -> Self
+    where
+        CallbackFunction: FnMut(KeyCode) -> () + Send + 'static,
+    {
         static ADDED_HOOK: AtomicBool = AtomicBool::new(false);
         // If we haven't already registered the global key hook, do it here.
         if ADDED_HOOK
@@ -104,7 +112,21 @@ impl Tracer {
         if handlers.is_none() {
             *handlers = Some(Vec::new());
         }
-        handlers.as_mut().unwrap().push(callback);
-        Self()
+        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+        let id = NEXT_ID.fetch_add(1, Ordering::SeqCst);
+        handlers.as_mut().unwrap().push(CallbackEntry {
+            callback: Box::new(callback),
+            id,
+        });
+        Self(id)
+    }
+}
+
+impl Drop for Tracer {
+    fn drop(&mut self) {
+        let mut handlers = CALLBACK_HANDLERS.lock().unwrap();
+        if let Some(handlers) = &mut *handlers {
+            handlers.retain(|entry| entry.id != self.0);
+        }
     }
 }

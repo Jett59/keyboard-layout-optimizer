@@ -10,9 +10,9 @@ mod keyboard;
 mod trace;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let tracer = Tracer::new(Box::new(|key_code| {
+    let _tracer = Tracer::new(|key_code| {
         println!("{:?}", key_code);
-    }));
+    });
     let native_options = NativeOptions::default();
     eframe::run_native(
         "Keyboard Layout Optimizer",

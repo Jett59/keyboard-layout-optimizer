@@ -1,10 +1,11 @@
 use std::error::Error;
 
-use eframe::egui;
-use eframe::NativeOptions;
+use gui::launch_gui;
 use trace::Tracer;
 
+mod gui;
 mod keyboard;
+mod layout_creator;
 
 #[cfg_attr(windows, path = "windows/trace.rs")]
 mod trace;
@@ -13,25 +14,5 @@ fn main() -> Result<(), Box<dyn Error>> {
     let _tracer = Tracer::new(|key_code| {
         println!("{:?}", key_code);
     });
-    let native_options = NativeOptions::default();
-    eframe::run_native(
-        "Keyboard Layout Optimizer",
-        native_options,
-        Box::new(|_creation_context| Box::new(KeyboardLayoutOptimizerGui::default())),
-    )?;
-    Ok(())
-}
-
-#[derive(Default)]
-struct KeyboardLayoutOptimizerGui {}
-
-impl eframe::App for KeyboardLayoutOptimizerGui {
-    fn update(&mut self, context: &eframe::egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(context, |ui| {
-            let button1 = ui.button("Button 1");
-            if button1.clicked() {
-                println!("Button 1 clicked");
-            }
-        });
-    }
+    launch_gui()
 }

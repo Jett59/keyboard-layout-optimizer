@@ -99,7 +99,8 @@ impl KeyboardLayout {
         None
     }
 
-    pub fn key_at(&self, row_index: usize, column_index: usize) -> KeyCode {
+    pub fn key_at(&self, position: (usize, usize)) -> KeyCode {
+        let (row_index, column_index) = position;
         match row_index {
             0 => self.top_row[column_index],
             1 => self.middle_row[column_index],

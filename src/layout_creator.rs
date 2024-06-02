@@ -5,7 +5,7 @@ use std::{
 
 use crate::keyboard::{KeyCode, KeyboardLayout};
 
-pub trait LayoutHint {
+pub trait LayoutHint: Sync + Send {
     /// Updates the internal state of the layout hint with the given key press.
     fn receive_key_press(&mut self, key_code: KeyCode, time: Instant);
 
@@ -26,9 +26,9 @@ impl LayoutCreator {
 
     pub fn create_layout(&self) -> KeyboardLayout {
         // Step 1: find the rankings for every position.
-        let mut rankings = vec::new();
+        let mut rankings = Vec::new();
         for row in 0..3 {
-            let mut row_rankings = vec::new();
+            let mut row_rankings = Vec::new();
             for column in 0..10 {
                 let rankings = self.rank_keys_for_position((row, column));
                 row_rankings.push(rankings);
@@ -61,10 +61,24 @@ impl LayoutCreator {
                     }
                 }
             }
-            let (row, column) = best_position.unwrap();
-            let key = best_key.unwrap();
+            // If the key wasn't found, put it in the first available position.
+            let (row, column) = best_position.unwrap_or_else(|| {
+                for position in 0..30 {
+                    let position = (position / 10, position % 10);
+                    if !used_positions.contains(&position) {
+                        return position;
+                    }
+                }
+                unreachable!();
+            });
+            let key = best_key.unwrap_or(
+                KeyboardLayout::QWERTY
+                    .iter()
+                    .find(|key_code| !used_keys.contains(key_code))
+                    .unwrap(),
+            );
             layout.set_key_at(row, column, key);
-            used_positions.insert(position);
+            used_positions.insert((row, column));
             used_keys.insert(key);
         }
         layout

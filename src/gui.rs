@@ -1,35 +1,71 @@
 use std::error::Error;
 
-use eframe::egui;
+use eframe::egui::{self, Button, Direction, Vec2};
+use eframe::egui::{Layout, Pos2, Rect, Ui};
 use eframe::NativeOptions;
 
 use crate::keyboard::KeyboardLayout;
 
 struct KeyboardLayoutOptimizerGui {
     create_layout: Box<dyn FnMut() -> KeyboardLayout>,
-    enable_layout: Box<dyn FnMut(KeyboardLayout) -> ()>,
+    custom_keyboard_layout: Option<KeyboardLayout>,
 }
 
 impl eframe::App for KeyboardLayoutOptimizerGui {
     fn update(&mut self, context: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(context, |ui| {
-            let create_button = ui.button("Create layout");
-            if create_button.clicked() {
-                println!("{:?}", (self.create_layout)());
-            }
-            let create_and_enable_button = ui.button("Create and enable layout");
-            if create_and_enable_button.clicked() {
-                let layout = (self.create_layout)();
-                (self.enable_layout)(layout);
+            if let Some(layout) = &self.custom_keyboard_layout {
+                Self::render_keyboard(ui, layout);
+            } else {
+                ui.centered_and_justified(|ui| {
+                    let create_button = ui.button("Create layout");
+                    if create_button.clicked() {
+                        let layout = (self.create_layout)();
+                        self.custom_keyboard_layout = Some(layout);
+                    }
+                });
+                Self::render_keyboard(ui, &KeyboardLayout::QWERTY);
             }
         });
     }
 }
 
-pub fn launch_gui(
-    create_layout: Box<dyn FnMut() -> KeyboardLayout>,
-    enable_layout: Box<dyn FnMut(KeyboardLayout) -> ()>,
-) -> Result<(), Box<dyn Error>> {
+impl KeyboardLayoutOptimizerGui {
+    fn render_keyboard(ui: &mut Ui, layout: &KeyboardLayout) {
+        let Vec2 {
+            x: available_width,
+            y: available_height,
+        } = ui.available_size();
+        // The keyboard should take up at most 2/3 of the available width and 2/3 of the available height
+        let key_size = f32::min(
+            2.0 / 3.0 * available_width / 11.0,
+            2.0 / 3.0 * available_height / 3.0,
+        );
+        let min_y = available_height - key_size * 3.0;
+        let width = 11.0 * key_size;
+        let height = 3.0 * key_size;
+        let mut keyboard_region = ui.child_ui(
+            Rect::from_min_size(Pos2::new(0.0, min_y), Vec2::new(width, height)),
+            Layout::centered_and_justified(Direction::TopDown),
+        );
+        keyboard_region.vertical(|rows| {
+            let row_offsets = [0.0, key_size / 2.0, key_size];
+            for row_index in 0..3 {
+                rows.horizontal(|row| {
+                    row.add_space(row_offsets[row_index]);
+                    for column_index in 0..10 {
+                        row.add(
+                            Button::new(layout.key_at((row_index, column_index)).to_string())
+                                .min_size(Vec2::new(key_size, key_size)),
+                        );
+                    }
+                });
+            }
+        });
+    }
+}
+
+pub fn launch_gui(create_layout: Box<dyn FnMut() -> KeyboardLayout>) -> Result<(), Box<dyn Error>> {
     let native_options = NativeOptions::default();
     eframe::run_native(
         "Keyboard Layout Optimizer",
@@ -37,7 +73,7 @@ pub fn launch_gui(
         Box::new(|_creation_context| {
             Box::new(KeyboardLayoutOptimizerGui {
                 create_layout,
-                enable_layout,
+                custom_keyboard_layout: None,
             })
         }),
     )?;

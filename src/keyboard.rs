@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KeyCode {
     Q,
@@ -30,6 +32,43 @@ pub enum KeyCode {
     Comma,
     Dot,
     Slash,
+}
+
+impl Display for KeyCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KeyCode::Q => write!(f, "Q"),
+            KeyCode::W => write!(f, "W"),
+            KeyCode::E => write!(f, "E"),
+            KeyCode::R => write!(f, "R"),
+            KeyCode::T => write!(f, "T"),
+            KeyCode::Y => write!(f, "Y"),
+            KeyCode::U => write!(f, "U"),
+            KeyCode::I => write!(f, "I"),
+            KeyCode::O => write!(f, "O"),
+            KeyCode::P => write!(f, "P"),
+            KeyCode::A => write!(f, "A"),
+            KeyCode::S => write!(f, "S"),
+            KeyCode::D => write!(f, "D"),
+            KeyCode::F => write!(f, "F"),
+            KeyCode::G => write!(f, "G"),
+            KeyCode::H => write!(f, "H"),
+            KeyCode::J => write!(f, "J"),
+            KeyCode::K => write!(f, "K"),
+            KeyCode::L => write!(f, "L"),
+            KeyCode::Semicolon => write!(f, ";"),
+            KeyCode::Z => write!(f, "Z"),
+            KeyCode::X => write!(f, "X"),
+            KeyCode::C => write!(f, "C"),
+            KeyCode::V => write!(f, "V"),
+            KeyCode::B => write!(f, "B"),
+            KeyCode::N => write!(f, "N"),
+            KeyCode::M => write!(f, "M"),
+            KeyCode::Comma => write!(f, ","),
+            KeyCode::Dot => write!(f, "."),
+            KeyCode::Slash => write!(f, "/"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

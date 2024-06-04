@@ -20,7 +20,7 @@ use windows::Win32::{
 
 use crate::keyboard::KeyCode;
 
-type BoxedCallbackFunction = Box<dyn FnMut(KeyCode) -> Option<KeyCode> + Send>;
+type BoxedCallbackFunction = Box<dyn FnMut(KeyCode) + Send>;
 
 struct CallbackEntry {
     callback: BoxedCallbackFunction,
@@ -76,42 +76,7 @@ unsafe extern "system" fn keyboard_hook_callback(
                 let mut callbacks = CALLBACK_HANDLERS.lock().unwrap();
                 if let Some(callbacks) = &mut *callbacks {
                     for callback in callbacks {
-                        if let Some(new_key_code) = (callback.callback)(key_code) {
-                            return LRESULT(1);
-                            event_info.vkCode = match new_key_code {
-                                KeyCode::Q => VK_Q,
-                                KeyCode::W => VK_W,
-                                KeyCode::E => VK_E,
-                                KeyCode::R => VK_R,
-                                KeyCode::T => VK_T,
-                                KeyCode::Y => VK_Y,
-                                KeyCode::U => VK_U,
-                                KeyCode::I => VK_I,
-                                KeyCode::O => VK_O,
-                                KeyCode::P => VK_P,
-                                KeyCode::A => VK_A,
-                                KeyCode::S => VK_S,
-                                KeyCode::D => VK_D,
-                                KeyCode::F => VK_F,
-                                KeyCode::G => VK_G,
-                                KeyCode::H => VK_H,
-                                KeyCode::J => VK_J,
-                                KeyCode::K => VK_K,
-                                KeyCode::L => VK_L,
-                                KeyCode::Semicolon => VK_OEM_1,
-                                KeyCode::Z => VK_Z,
-                                KeyCode::X => VK_X,
-                                KeyCode::C => VK_C,
-                                KeyCode::V => VK_V,
-                                KeyCode::B => VK_B,
-                                KeyCode::N => VK_N,
-                                KeyCode::M => VK_M,
-                                KeyCode::Comma => VK_OEM_COMMA,
-                                KeyCode::Dot => VK_OEM_PERIOD,
-                                KeyCode::Slash => VK_OEM_2,
-                            }
-                            .0 as u32;
-                        }
+                        (callback.callback)(key_code);
                     }
                 }
             }
@@ -125,7 +90,7 @@ pub struct Tracer(usize);
 impl Tracer {
     pub fn new<CallbackFunction>(callback: CallbackFunction) -> Self
     where
-        CallbackFunction: FnMut(KeyCode) -> Option<KeyCode> + Send + 'static,
+        CallbackFunction: FnMut(KeyCode) + Send + 'static,
     {
         static ADDED_HOOK: AtomicBool = AtomicBool::new(false);
         // If we haven't already registered the global key hook, do it here.

@@ -41,16 +41,16 @@ pub struct DigramTimingHint {
 
 impl LayoutHint for DigramTimingHint {
     fn receive_key_press(&mut self, key_code: KeyCode, time: Instant) {
+        let count = *self
+                .frequencies
+                .entry(key_code)
+                .and_modify(|frequency| *frequency += 1)
+                .or_insert(1);
         if let Some(last_key) = self.last_key {
             let last_time = self.last_time.unwrap();
             let time_between_keys = time.duration_since(last_time);
             // If there was more than a second between keys, we  assume something else happened. We shouldn't count this in our stats.
             if time_between_keys < Duration::from_secs(1) {
-                let count = *self
-                    .frequencies
-                    .entry(key_code)
-                    .and_modify(|frequency| *frequency += 1)
-                    .or_insert(1);
                 let last_count = *self.frequencies.get(&last_key).unwrap_or(&0);
                 let this_position = KeyboardLayout::QWERTY.position_of(key_code).unwrap();
                 let last_position = KeyboardLayout::QWERTY.position_of(last_key).unwrap();

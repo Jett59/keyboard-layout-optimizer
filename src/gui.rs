@@ -17,15 +17,13 @@ impl eframe::App for KeyboardLayoutOptimizerGui {
             if let Some(layout) = &self.custom_keyboard_layout {
                 Self::render_keyboard(ui, layout);
             } else {
-                ui.centered_and_justified(|ui| {
-                    let create_button = ui.button("Create layout");
-                    if create_button.clicked() {
-                        let layout = (self.create_layout)();
-                        self.custom_keyboard_layout = Some(layout);
-                    }
-                });
-                Self::render_keyboard(ui, &KeyboardLayout::QWERTY);
+                let create_button = ui.button("Create layout");
+                if create_button.clicked() {
+                    let layout = (self.create_layout)();
+                    self.custom_keyboard_layout = Some(layout);
+                }
             }
+            Self::render_keyboard(ui, &KeyboardLayout::QWERTY);
         });
     }
 }
@@ -42,16 +40,18 @@ impl KeyboardLayoutOptimizerGui {
             2.0 / 3.0 * available_height / 3.0,
         );
         let min_y = available_height - key_size * 3.0;
-        let width = 11.0 * key_size;
         let height = 3.0 * key_size;
         let mut keyboard_region = ui.child_ui(
-            Rect::from_min_size(Pos2::new(0.0, min_y), Vec2::new(width, height)),
+            Rect::from_min_size(Pos2::new(0.0, min_y), Vec2::new(available_width, height)),
             Layout::centered_and_justified(Direction::TopDown),
         );
+        // Unfortunately there is no easy way to get the keyboard to be horizontally centered
+        let offset = (available_width - 11.0 * key_size) / 2.0;
         keyboard_region.vertical(|rows| {
             let row_offsets = [0.0, key_size / 2.0, key_size];
             for row_index in 0..3 {
                 rows.horizontal(|row| {
+                    row.add_space(offset);
                     row.add_space(row_offsets[row_index]);
                     for column_index in 0..10 {
                         row.add(
@@ -59,6 +59,8 @@ impl KeyboardLayoutOptimizerGui {
                                 .min_size(Vec2::new(key_size, key_size)),
                         );
                     }
+                    row.add_space(key_size - row_offsets[row_index]);
+                    row.add_space(offset)
                 });
             }
         });

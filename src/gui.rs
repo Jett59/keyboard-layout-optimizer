@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use eframe::egui::{self, Button, Direction, Vec2};
+use eframe::egui::{self, Align, Button, Direction, Vec2};
 use eframe::egui::{Layout, Pos2, Rect, Ui};
 use eframe::NativeOptions;
 
@@ -8,14 +8,31 @@ use crate::keyboard::KeyboardLayout;
 
 struct KeyboardLayoutOptimizerGui {
     create_layout: Box<dyn FnMut() -> KeyboardLayout>,
+    enable_layout: Box<dyn FnMut(&KeyboardLayout)>,
+    disable_layout: Box<dyn FnMut()>,
     custom_keyboard_layout: Option<KeyboardLayout>,
+    enabled: bool,
 }
 
 impl eframe::App for KeyboardLayoutOptimizerGui {
     fn update(&mut self, context: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(context, |ui| {
             if let Some(layout) = &self.custom_keyboard_layout {
+                let back_button = ui.button("Back");
+                let enable_checkbox = ui
+                    .child_ui(ui.max_rect(), Layout::right_to_left(Align::TOP))
+                    .checkbox(&mut self.enabled, "Enable");
                 Self::render_keyboard(ui, layout);
+                if enable_checkbox.changed() {
+                    if self.enabled {
+                        (self.enable_layout)(layout);
+                    }else {
+                        (self.disable_layout)();
+                    }
+                }
+                if back_button.clicked() {
+                    self.custom_keyboard_layout = None;
+                }
             } else {
                 let create_button = ui.button("Create layout");
                 if create_button.clicked() {
@@ -60,14 +77,19 @@ impl KeyboardLayoutOptimizerGui {
                         );
                     }
                     row.add_space(key_size - row_offsets[row_index]);
-                    row.add_space(offset)
+                    row.add_space(offset);
+                    assert_eq!(row.available_width().round(), 0.0);
                 });
             }
         });
     }
 }
 
-pub fn launch_gui(create_layout: Box<dyn FnMut() -> KeyboardLayout>) -> Result<(), Box<dyn Error>> {
+pub fn launch_gui(
+    create_layout: Box<dyn FnMut() -> KeyboardLayout>,
+    enable_layout: Box<dyn FnMut(&KeyboardLayout)>,
+    disable_layout: Box<dyn FnMut()>,
+) -> Result<(), Box<dyn Error>> {
     let native_options = NativeOptions::default();
     eframe::run_native(
         "Keyboard Layout Optimizer",
@@ -75,7 +97,10 @@ pub fn launch_gui(create_layout: Box<dyn FnMut() -> KeyboardLayout>) -> Result<(
         Box::new(|_creation_context| {
             Box::new(KeyboardLayoutOptimizerGui {
                 create_layout,
+                enable_layout,
+                disable_layout,
                 custom_keyboard_layout: None,
+                enabled: false,
             })
         }),
     )?;

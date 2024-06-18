@@ -32,5 +32,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     launch_gui(Box::new(move || {
         let layout_creator = layout_creator.lock().unwrap();
         layout_creator.create_layout()
+    }), Box::new(move |layout| {
+        println!("Enabling!");
+    }), Box::new(move || {
+        println!("Disabling!");
     }))
 }

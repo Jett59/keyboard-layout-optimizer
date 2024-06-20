@@ -32,6 +32,9 @@ impl eframe::App for KeyboardLayoutOptimizerGui {
                 }
                 if back_button.clicked() {
                     self.custom_keyboard_layout = None;
+                    if self.enabled {
+                        (self.disable_layout)();
+                    }
                 }
             } else {
                 let create_button = ui.button("Create layout");

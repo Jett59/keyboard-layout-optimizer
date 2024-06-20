@@ -24,10 +24,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         DigramTimingHint::default(),
     )])));
     let layout_creator2 = layout_creator.clone();
-    let _tracer = Tracer::new(move |key_code| {
+    let _tracer = Tracer::new(move |context, key_code| {
         let mut layout_creator = layout_creator2.lock().unwrap();
         println!("{:?}", key_code);
         layout_creator.receive_key_press(key_code, Instant::now());
+        context.suppress();
     });
     launch_gui(Box::new(move || {
         let layout_creator = layout_creator.lock().unwrap();

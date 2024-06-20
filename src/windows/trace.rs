@@ -20,7 +20,18 @@ use windows::Win32::{
 
 use crate::keyboard::KeyCode;
 
-type BoxedCallbackFunction = Box<dyn FnMut(KeyCode) + Send>;
+#[derive(Default)]
+pub struct Context {
+    suppress: bool,
+}
+
+impl Context {
+    pub fn suppress(&mut self) {
+        self.suppress = true;
+    }
+}
+
+type BoxedCallbackFunction = Box<dyn FnMut(&mut Context, KeyCode) + Send>;
 
 struct CallbackEntry {
     callback: BoxedCallbackFunction,
@@ -76,7 +87,11 @@ unsafe extern "system" fn keyboard_hook_callback(
                 let mut callbacks = CALLBACK_HANDLERS.lock().unwrap();
                 if let Some(callbacks) = &mut *callbacks {
                     for callback in callbacks {
-                        (callback.callback)(key_code);
+                        let mut context = Context::default();
+                        (callback.callback)(&mut context, key_code);
+                        if context.suppress {
+                            return LRESULT(1);
+                        }
                     }
                 }
             }
@@ -90,7 +105,7 @@ pub struct Tracer(usize);
 impl Tracer {
     pub fn new<CallbackFunction>(callback: CallbackFunction) -> Self
     where
-        CallbackFunction: FnMut(KeyCode) + Send + 'static,
+        CallbackFunction: FnMut(&mut Context, KeyCode) + Send + 'static,
     {
         static ADDED_HOOK: AtomicBool = AtomicBool::new(false);
         // If we haven't already registered the global key hook, do it here.

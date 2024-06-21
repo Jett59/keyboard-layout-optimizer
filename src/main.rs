@@ -7,7 +7,7 @@ use std::{
 use digram_timing::DigramTimingHint;
 use gui::launch_gui;
 
-use keyboard::KeyCode;
+use keyboard::KeyboardLayout;
 use layout_creator::LayoutCreator;
 use trace::Tracer;
 
@@ -27,13 +27,21 @@ fn main() -> Result<(), Box<dyn Error>> {
     let layout_creator = Arc::new(Mutex::new(LayoutCreator::new(vec![Box::new(
         DigramTimingHint::default(),
     )])));
+    let active_keyboard_layout: Arc<Mutex<Option<KeyboardLayout>>> = Arc::new(Mutex::new(None));
     let layout_creator2 = layout_creator.clone();
+    let active_keyboard_layout2 = active_keyboard_layout.clone();
+    let active_keyboard_layout3 = active_keyboard_layout.clone();
     let _tracer = Tracer::new(move |context, key_code| {
         let mut layout_creator = layout_creator2.lock().unwrap();
+        let active_keyboard_layout = active_keyboard_layout3.lock().unwrap();
         println!("{:?}", key_code);
         layout_creator.receive_key_press(key_code, Instant::now());
-        context.suppress();
-        context.send_keystroke(KeyCode::B)
+        if let Some(active_keyboard_layout) = *active_keyboard_layout {
+            context.suppress();
+            let translated_keystroke = active_keyboard_layout
+                .key_at(KeyboardLayout::QWERTY.position_of(key_code).unwrap());
+            context.send_keystroke(translated_keystroke);
+        }
     });
     launch_gui(
         Box::new(move || {
@@ -41,10 +49,12 @@ fn main() -> Result<(), Box<dyn Error>> {
             layout_creator.create_layout()
         }),
         Box::new(move |layout| {
-            println!("Enabling!");
+            let mut active_keyboard_layout = active_keyboard_layout.lock().unwrap();
+            *active_keyboard_layout = Some(layout.clone());
         }),
         Box::new(move || {
-            println!("Disabling!");
+            let mut active_keyboard_layout = active_keyboard_layout2.lock().unwrap();
+            *active_keyboard_layout = None;
         }),
     )
 }

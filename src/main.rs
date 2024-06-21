@@ -6,6 +6,8 @@ use std::{
 
 use digram_timing::DigramTimingHint;
 use gui::launch_gui;
+
+use keyboard::KeyCode;
 use layout_creator::LayoutCreator;
 use trace::Tracer;
 
@@ -16,6 +18,8 @@ mod gui;
 mod keyboard;
 mod layout_creator;
 
+#[cfg_attr(windows, path = "windows/input.rs")]
+mod input;
 #[cfg_attr(windows, path = "windows/trace.rs")]
 mod trace;
 
@@ -29,13 +33,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("{:?}", key_code);
         layout_creator.receive_key_press(key_code, Instant::now());
         context.suppress();
+        context.send_keystroke(KeyCode::B)
     });
-    launch_gui(Box::new(move || {
-        let layout_creator = layout_creator.lock().unwrap();
-        layout_creator.create_layout()
-    }), Box::new(move |layout| {
-        println!("Enabling!");
-    }), Box::new(move || {
-        println!("Disabling!");
-    }))
+    launch_gui(
+        Box::new(move || {
+            let layout_creator = layout_creator.lock().unwrap();
+            layout_creator.create_layout()
+        }),
+        Box::new(move |layout| {
+            println!("Enabling!");
+        }),
+        Box::new(move || {
+            println!("Disabling!");
+        }),
+    )
 }

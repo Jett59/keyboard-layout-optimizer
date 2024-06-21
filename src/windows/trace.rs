@@ -12,22 +12,50 @@ use windows::Win32::{
             VK_S, VK_T, VK_U, VK_V, VK_W, VK_X, VK_Y, VK_Z,
         },
         WindowsAndMessaging::{
-            CallNextHookEx, SetWindowsHookExA, KBDLLHOOKSTRUCT, WH_KEYBOARD_LL, WM_KEYDOWN,
-            WM_SYSKEYDOWN,
+            CallNextHookEx, SetWindowsHookExA, UnhookWindowsHookEx, HHOOK, KBDLLHOOKSTRUCT,
+            WH_KEYBOARD_LL, WM_KEYDOWN, WM_SYSKEYDOWN,
         },
     },
 };
 
-use crate::keyboard::KeyCode;
+use crate::{input::generate_key_stroke, keyboard::KeyCode};
+
+static HOOK_HANDLE: Mutex<Option<HHOOK>> = Mutex::new(None);
+
+fn install_keyboard_hook() {
+    let mut hook_handle = HOOK_HANDLE.lock().unwrap();
+    *hook_handle = Some(unsafe {
+        SetWindowsHookExA(
+            WH_KEYBOARD_LL,
+            Some(keyboard_hook_callback),
+            HINSTANCE::default(),
+            0,
+        )
+        .unwrap()
+    });
+}
+
+fn uninstall_keyboard_hook() {
+    let mut hook_handle = HOOK_HANDLE.lock().unwrap();
+    unsafe {
+        UnhookWindowsHookEx(hook_handle.expect("Uninstalling hook before installing")).unwrap();
+    }
+    *hook_handle = None;
+}
 
 #[derive(Default)]
 pub struct Context {
     suppress: bool,
+    sent_keystrokes: Vec<KeyCode>,
 }
 
 impl Context {
     pub fn suppress(&mut self) {
         self.suppress = true;
+    }
+
+    pub fn send_keystroke(&mut self, key_code: KeyCode) {
+        self.sent_keystrokes.push(key_code);
     }
 }
 
@@ -89,6 +117,14 @@ unsafe extern "system" fn keyboard_hook_callback(
                     for callback in callbacks {
                         let mut context = Context::default();
                         (callback.callback)(&mut context, key_code);
+                        if context.sent_keystrokes.len() > 0 {
+                            // We don't want to receive the keystroke event ourselves. This is apparently how to get around this:
+                            uninstall_keyboard_hook();
+                            for key_code in context.sent_keystrokes {
+                                generate_key_stroke(key_code);
+                            }
+                            install_keyboard_hook();
+                        }
                         if context.suppress {
                             return LRESULT(1);
                         }
@@ -113,15 +149,7 @@ impl Tracer {
             .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
             .is_ok()
         {
-            unsafe {
-                SetWindowsHookExA(
-                    WH_KEYBOARD_LL,
-                    Some(keyboard_hook_callback),
-                    HINSTANCE::default(),
-                    0,
-                )
-                .unwrap()
-            };
+            install_keyboard_hook();
         }
         let mut handlers = CALLBACK_HANDLERS.lock().unwrap();
         if handlers.is_none() {

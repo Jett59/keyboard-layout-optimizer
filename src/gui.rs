@@ -34,6 +34,7 @@ impl eframe::App for KeyboardLayoutOptimizerGui {
                     self.custom_keyboard_layout = None;
                     if self.enabled {
                         (self.disable_layout)();
+                        self.enabled = false;
                     }
                 }
             } else {

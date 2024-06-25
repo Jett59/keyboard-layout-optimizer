@@ -34,7 +34,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let _tracer = Tracer::new(move |context, key_code| {
         let mut layout_creator = layout_creator2.lock().unwrap();
         let active_keyboard_layout = active_keyboard_layout3.lock().unwrap();
-        println!("{:?}", key_code);
         layout_creator.receive_key_press(key_code, Instant::now());
         if let Some(active_keyboard_layout) = *active_keyboard_layout {
             context.suppress();
